@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced 2D Soccer Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #e0f7fa;
+        }
+        #gameArea {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            background-color: #4caf50;
+            border: 2px solid #00796b;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .player, .ball, .goal {
+            position: absolute;
+        }
+        .player {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .player1 { background-color: blue; }
+        .player2 { background-color: red; }
+        .ball {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: white;
+        }
+        .goal {
+            width: 20px;
+            height: 100px;
+        }
+        .goal1 { background-color: yellow; left: 0; }
+        .goal2 { background-color: orange; right: 0; }
+        #score {
+            font-size: 20px;
+            color: #00796b;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced 2D Soccer Game</h1>
+    <div id="gameArea">
+        <!-- Team 1 Players -->
+        <div id="player1-1" class="player player1"></div>
+        <div id="player1-2" class="player player1"></div>
+        <div id="player1-3" class="player player1"></div>
+        <div id="player1-4" class="player player1"></div>
+        <div id="player1-5" class="player player1"></div>
+
+        <!-- Team 2 Players -->
+        <div id="player2-1" class="player player2"></div>
+        <div id="player2-2" class="player player2"></div>
+        <div id="player2-3" class="player player2"></div>
+        <div id="player2-4" class="player player2"></div>
+        <div id="player2-5" class="player player2"></div>
+
+        <div id="ball" class="ball"></div>
+        <div id="goal1" class="goal goal1"></div>
+        <div id="goal2" class="goal goal2"></div>
+    </div>
+    <p id="score">Team 1: 0 - Team 2: 0</p>
+
+    <script>
+        const gameArea = document.getElementById('gameArea');
+        const ball = document.getElementById('ball');
+        const scoreElement = document.getElementById('score');
+
+        const playersTeam1 = [
+            document.getElementById('player1-1'),
+            document.getElementById('player1-2'),
+            document.getElementById('player1-3'),
+            document.getElementById('player1-4'),
+            document.getElementById('player1-5')
+        ];
+        const playersTeam2 = [
+            document.getElementById('player2-1'),
+            document.getElementById('player2-2'),
+            document.getElementById('player2-3'),
+            document.getElementById('player2-4'),
+            document.getElementById('player2-5')
+        ];
+
+        const goal1 = document.getElementById('goal1');
+        const goal2 = document.getElementById('goal2');
+
+        let ballDx = 0;
+        let ballDy = 0;
+        let ballSpeed = 4;
+        let playerSpeed = 3;
+        let isGameOver = false;
+        let team1Score = 0;
+        let team2Score = 0;
+        let controllingPlayer = null;
+
+        function getElementRect(element) {
+            return element.getBoundingClientRect();
+        }
+
+        function startBall() {
+            const randomAngle = Math.random() * 2 * Math.PI;
+            ballDx = Math.cos(randomAngle) * ballSpeed;
+            ballDy = Math.sin(randomAngle) * ballSpeed;
+        }
+
+        function updateGame() {
+            if (isGameOver) return;
+
+            // Move ball
+            const ballRect = getElementRect(ball);
+            const gameAreaRect = getElementRect(gameArea);
+            let newBallLeft = ballRect.left + ballDx - gameAreaRect.left;
+            let newBallTop = ballRect.top + ballDy - gameAreaRect.top;
+
+            // Ball collision with walls
+            if (newBallTop <= 0 || newBallTop >= gameArea.offsetHeight - ball.offsetHeight) {
+                ballDy *= -1;
+                newBallTop = Math.max(0, Math.min(gameArea.offsetHeight - ball.offsetHeight, newBallTop));
+            }
+            if (newBallLeft <= 0 || newBallLeft >= gameArea.offsetWidth - ball.offsetWidth) {
+                ballDx *= -1;
+                newBallLeft = Math.max(0, Math.min(gameArea.offsetWidth - ball.offsetWidth, newBallLeft));
+            }
+
+            ball.style.left = `${newBallLeft}px`;
+            ball.style.top = `${newBallTop}px`;
+
+            // Ball goal check
+            const ballRectUpdated = getElementRect(ball);
+            const goal1Rect = getElementRect(goal1);
+            const goal2Rect = getElementRect(goal2);
+
+            if (ballRectUpdated.left < goal1Rect.right &&
+                ballRectUpdated.right > goal1Rect.left &&
+                ballRectUpdated.top < goal1Rect.bottom &&
+                ballRectUpdated.bottom > goal1Rect.top) {
+                team2Score++;
+                updateScore();
+                resetBall();
+                return;
+            }
+
+            if (ballRectUpdated.left < goal2Rect.right &&
+                ballRectUpdated.right > goal2Rect.left &&
+                ballRectUpdated.top < goal2Rect.bottom &&
+                ballRectUpdated.bottom > goal2Rect.top) {
+                team1Score++;
+                updateScore();
+                resetBall();
+                return;
+            }
+
+            // Move players
+            playersTeam2.forEach(player => {
+                movePlayerAI(player, ballRect);
+            });
+
+            requestAnimationFrame(updateGame);
+        }
+
+        function movePlayerAI(player, ballRect) {
+            const playerRect = getElementRect(player);
+            if (ballRect.left > playerRect.left) {
+                if (ballRect.top < playerRect.top + playerRect.height / 2) {
+                    player.style.top = `${Math.max(0, parseInt(player.style.top) - playerSpeed)}px`;
+                } else {
+                    player.style.top = `${Math.min(gameArea.offsetHeight - player.offsetHeight, parseInt(player.style.top) + playerSpeed)}px`;
+                }
+            }
+        }
+
+        function handleKeyDown(event) {
+            const movePlayer = (player, upKey, downKey) => {
+                if (event.key === upKey && parseInt(player.style.top) > 0) {
+                    player.style.top = `${Math.max(0, parseInt(player.style.top) - playerSpeed)}px`;
+                } else if (event.key === downKey && parseInt(player.style.top) < gameArea.offsetHeight - player.offsetHeight) {
+                    player.style.top = `${Math.min(gameArea.offsetHeight - player.offsetHeight, parseInt(player.style.top) + playerSpeed)}px`;
+                }
+            };
+
+            // Human Player Controls
+            movePlayer(playersTeam1[0], 'w', 's'); // Player 1 controls
+            movePlayer(playersTeam1[1], 'a', 'd'); // Player 2 controls
+
+            if (event.key === 'q') {
+                passBall();
+            } else if (event.key === 'e') {
+                shootBall();
+            }
+        }
+
+        function passBall() {
+            const playerRect = getElementRect(controllingPlayer);
+            const ballRect = getElementRect(ball);
+
+            const dx = (playerRect.left + playerRect.width / 2) - (ballRect.left + ballRect.width / 2);
+            const dy = (playerRect.top + playerRect.height / 2) - (ballRect.top + ballRect.height / 2);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 50) {
+                const angle = Math.atan2(dy, dx);
+                ballDx = Math.cos(angle) * ballSpeed;
+                ballDy = Math.sin(angle) * ballSpeed;
+            }
+        }
+
+        function shootBall() {
+            const playerRect = getElementRect(controllingPlayer);
+            const ballRect = getElementRect(ball);
+
+            const goalRect = getElementRect(goal2); // Assume shooting towards goal2
+            const dx = goalRect.left - ballRect.left;
+            const dy = goalRect.top +
